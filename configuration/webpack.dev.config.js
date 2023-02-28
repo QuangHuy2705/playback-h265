@@ -1,20 +1,34 @@
 /* eslint-disable import/no-extraneous-dependencies */
-const { merge } = require('webpack-merge');
+const { merge } = require("webpack-merge");
 
-const webpackConfiguration = require('../webpack.config');
-const environment = require('./environment');
+const webpackConfiguration = require("../webpack.config");
+const environment = require("./environment");
 
 module.exports = merge(webpackConfiguration, {
-  mode: 'development',
+  mode: "development",
 
   /* Manage source maps generation process */
-  devtool: 'eval-source-map',
+  devtool: "eval-source-map",
 
   /* Development Server Configuration */
   devServer: {
+    proxy: {
+      "/api": {
+        secure: false,
+        target: "https://platform.prism.vn",
+        changeOrigin: true,
+        logLevel: "info",
+      },
+    },
+    headers: {
+      "Cross-Origin-Embedder-Policy": "credentialless",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    },
     static: {
       directory: environment.paths.output,
-      publicPath: '/',
+      publicPath: "/",
       watch: true,
     },
     client: {
