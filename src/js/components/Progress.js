@@ -1,19 +1,13 @@
-// import BaseComponent from "../base/BaseComponent";
+import BaseComponent from '../base/BaseComponent'
 
-class ProgressBar {
-  parent;
-  element;
+class ProgressBar extends BaseComponent {
   constructor(parent) {
-    this.parent = parent;
-    this.render();
+    super(parent)
   }
 
   render() {
-    console.log(this.parent);
-  }
-  getElement() {
-    return this.element;
+    console.log(this.parent)
   }
 }
 
-export default ProgressBar;
+export default ProgressBar

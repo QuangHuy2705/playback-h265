@@ -1,17 +1,16 @@
 class BaseComponent {
-  element = null;
-  parent = null;
-  constructor(options = {}) {
-    super(options);
-    this.id = options.id || this.constructor.name;
-    this.render();
+  element = null
+  parent = null
+  constructor(parent) {
+    this.parent = parent
+    this.render()
   }
 
-  getComponent() {
-    return this.element;
+  getElement() {
+    return this.element
   }
 
   render() {}
 }
 
-export default BaseComponent;
+export default BaseComponent
