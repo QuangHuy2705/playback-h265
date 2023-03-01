@@ -72,12 +72,12 @@ export class M3U8Parser {
     let name = parsed[3];
     if (duration % 1 !== 0) {
       if (this.tags.VERSION >= 3) {
-        console.log(
-          "readsegment",
-          "Version must be 3 or higher to support floating.",
-          "duration:",
-          duration
-        );
+        // console.log(
+        //   "readsegment",
+        //   "Version must be 3 or higher to support floating.",
+        //   "duration:",
+        //   duration
+        // );
       }
     }
     if (duration < this.tags.TARGETDURATION) {

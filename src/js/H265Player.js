@@ -3,7 +3,7 @@
  * @author: huyntq
  * @file: H265Player.js
  */
-import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import { createFFmpeg } from "@ffmpeg/ffmpeg";
 import { M3U8Parser } from "./toolkit/M3U8Parser";
 import Utils from "./utils";
 import {
@@ -11,31 +11,37 @@ import {
   VideoContainer,
   Loading,
   ProgressBar,
+  MainContainer,
 } from "./components";
 // import { v4 as uuidv4 } from "uuid";
 
 class H265Player {
-  loading = true;
+  loading = false;
+  loadingFfmpeg = true;
   error = null;
   el = null;
   worker = null;
   processURL = null;
-  currentSegment = null;
+  currentSegment = -1;
   segmentPool = [];
   ffmpeg = null;
+  mainContainer = null;
   videoContainer = null;
   videoComponent = null;
   loadingComponent = null;
   progressBar = null;
-  /**
-   * H265Player is the class exposed to user
-   * @constructs
-   */
+  loadingNext = null;
+  speed = 1;
+  start = null;
+  end = null;
+
   constructor(url, el, options) {
     this.processURL = url;
     this.el = el;
     this.initUI();
     this.initFFmpeg();
+    this.registerEvents();
+
     // this.play();
   }
 
@@ -51,66 +57,47 @@ class H265Player {
       return;
     }
     this.videoContainer = new VideoContainer(this.el);
-    this.videoComponent = new VideoComponent(this.videoContainer);
+    this.mainContainer = new MainContainer(this.videoContainer);
+    this.videoComponent = new VideoComponent(this.mainContainer);
+    this.progressBar = new ProgressBar(this.mainContainer);
     this.loadingComponent = new Loading(this.videoContainer);
-    this.progressBar = new ProgressBar(this.videoContainer);
   }
 
-  fetchFile = async (_data) => {
-    let data = _data;
-    if (typeof _data === "undefined") {
-      return new Uint8Array();
-    }
+  appendNewSegment = () => {
+    this.loadingNext = false;
+    this.play(this.currentSegment + 1);
+  };
 
-    if (typeof _data === "string") {
-      /* From base64 format */
-      if (/data:_data\/([a-zA-Z]*);base64,([^"]*)/.test(_data)) {
-        data = atob(_data.split(",")[1])
-          .split("")
-          .map((c) => c.charCodeAt(0));
-        /* From remote server/URL */
-      } else {
-        const res = await fetch(new URL(_data, import.meta.url).href);
-        data = await res.arrayBuffer();
-      }
-      /* From Blob or File */
-    } else if (_data instanceof File || _data instanceof Blob) {
-      data = await readFromBlobOrFile(_data);
+  getPercentage = () => {
+    const totalLength = this.videoComponent.getElement().duration;
+    const percentageCompleted =
+      (this.videoComponent.getElement().currentTime / totalLength) * 100;
+    console.log(this);
+    this.progressBar.updateProgressBar();
+    if (percentageCompleted > 20 && !this.loadingNext) {
+      this.loadingNext = true;
+      this.loadNext();
     }
+  };
 
-    return new Uint8Array(data);
+  onUpdateSpeed = (speed) => {
+    this.speed = speed;
+    this.videoComponent.getElement().defaultPlaybackRate = speed;
   };
 
   async loadNext() {
+    console.log("LOADING NEXT");
     if (this.currentSegment == this.segmentPool.length - 1) {
       return;
     }
+    const fileName = this.segmentPool[this.currentSegment + 1]?.name;
+    const outputFile = `${fileName}.mp4`;
     const nextFile = this.segmentPool[this.currentSegment + 1].name;
-    // console.log("loadnext");
-    // this.currentSegment++;
-    // this.play(this.currentSegment);
     this.ffmpeg.FS(
       "writeFile",
       nextFile,
-      await this.fetchFile(this.segmentPool[this.currentSegment + 1].file)
+      await Utils.fetchFile(this.segmentPool[this.currentSegment + 1].file)
     );
-  }
-
-  async play(idx) {
-    this.currentSegment = idx;
-    this.loading = true;
-    const fileName = this.segmentPool[idx].name;
-    const outputFile = `${fileName}.mp4`;
-
-    this.ffmpeg.FS(
-      "writeFile",
-      fileName,
-      await this.fetchFile(this.segmentPool[idx].file)
-    );
-
-    // const fileExist = await this.ffmpeg.FS("access", outputFile);
-    // console.log(fileExist);
-
     await this.ffmpeg.run(
       "-i",
       fileName,
@@ -120,9 +107,21 @@ class H265Player {
       "copy",
       `${outputFile}`
     );
+    // await this.ffmpeg.FS("unlink", outputFile);
+  }
+
+  async play(idx) {
+    if (idx == this.segmentPool.length - 1) {
+      console.log("END OF LIST");
+
+      return;
+    }
+    this.currentSegment = idx;
+    this.loading = true;
+    const fileName = this.segmentPool[idx].name;
+    const outputFile = `${fileName}.mp4`;
 
     const data = this.ffmpeg.FS("readFile", outputFile);
-    console.log(this.videoComponent);
     this.videoComponent.getElement().pause();
     this.videoComponent.getElement().src = URL.createObjectURL(
       new Blob([data.buffer], {
@@ -132,7 +131,6 @@ class H265Player {
     this.videoComponent.getElement().play();
     this.loadingComponent.hideLoad();
     this.loading = false;
-    await this.ffmpeg.FS("unlink", outputFile);
   }
 
   async getPlaylist() {
@@ -153,16 +151,17 @@ class H265Player {
         });
       } else {
         this.error = true;
+        this.loadingComponent.showError();
         console.log("GETTING M3U8 ERROR: ", this.processURL);
       }
     } catch (err) {
       this.error = true;
-
+      this.loadingComponent.showError();
       console.log("GETTING M3U8 ERROR: ", this.processURL);
     }
   }
 
-  parsePlaylist(source) {
+  async parsePlaylist(source) {
     const data = new M3U8Parser(source);
     if (!data.segments || !data.segments.length) {
       console.error("SOME THING WENT WRONG");
@@ -174,18 +173,41 @@ class H265Player {
       item.end = Utils.msec2sec(item.end);
       item.duration = Utils.msec2sec(item.duration);
     });
-    console.log(segments);
+    this.start = segments[0].start;
+    this.end = segments[segments.length - 1].end;
     this.segmentPool = segments;
-    this.play(6);
-    // this.setSourceData(Object.freeze(data));
-    // this.segmentPool.addAll(data.segments);
+    await this.loadNext();
+    this.play(0);
+  }
+
+  registerEvents() {
+    this.videoComponent
+      .getElement()
+      .addEventListener("ended", this.appendNewSegment);
+
+    this.videoComponent
+      .getElement()
+      .addEventListener("timeupdate", this.getPercentage);
   }
 
   destroyUI() {}
 
   cleanUpStorage() {}
 
-  destroy() {}
+  unregisterEvent() {
+    this.videoComponent
+      .getElement()
+      .removeEventListener("ended", this.appendNewSegment);
+    this.videoComponent
+      .getElement()
+      .removeEventListener("timeupdate", this.appendNewSegment);
+  }
+
+  destroy() {
+    this.destroyUI();
+    this.cleanUpStorage();
+    this.unregisterEvent();
+  }
 }
 
 export default H265Player;

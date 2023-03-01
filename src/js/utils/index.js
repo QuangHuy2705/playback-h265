@@ -42,6 +42,31 @@ export default class Utils {
     return URL.createObjectURL(blob);
   }
 
+  static fetchFile = async (_data) => {
+    let data = _data;
+    if (typeof _data === "undefined") {
+      return new Uint8Array();
+    }
+
+    if (typeof _data === "string") {
+      /* From base64 format */
+      if (/data:_data\/([a-zA-Z]*);base64,([^"]*)/.test(_data)) {
+        data = atob(_data.split(",")[1])
+          .split("")
+          .map((c) => c.charCodeAt(0));
+        /* From remote server/URL */
+      } else {
+        const res = await fetch(new URL(_data, import.meta.url).href);
+        data = await res.arrayBuffer();
+      }
+      /* From Blob or File */
+    } else if (_data instanceof File || _data instanceof Blob) {
+      data = await readFromBlobOrFile(_data);
+    }
+
+    return new Uint8Array(data);
+  };
+
   static escapeHTML(str) {
     if (!Utils.isString(str)) {
       return;

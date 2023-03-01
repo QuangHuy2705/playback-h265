@@ -1,6 +1,6 @@
 import BaseComponent from "../base/BaseComponent";
 
-class VideoContainer extends BaseComponent {
+class MainContainer extends BaseComponent {
   constructor(parent) {
     super(parent);
   }
@@ -11,9 +11,11 @@ class VideoContainer extends BaseComponent {
     cp.style.height = "100%";
     cp.style.position = "relative";
     cp.style.background = "#000";
-    this.parent.appendChild(cp);
+    cp.style.display = "grid";
+    cp.style["grid-template-rows"] = "1fr 30px";
+    this.parent.getElement().appendChild(cp);
     this.element = cp;
   }
 }
 
-export default VideoContainer;
+export default MainContainer;
