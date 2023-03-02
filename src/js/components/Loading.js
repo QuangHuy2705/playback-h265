@@ -1,7 +1,6 @@
 import BaseComponent from "../base/BaseComponent";
 
 class Loading extends BaseComponent {
-  error;
   constructor(parent) {
     super(parent);
   }

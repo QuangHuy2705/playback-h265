@@ -8,7 +8,7 @@ import H265Player from "./H265Player";
 const el = document.querySelector("#video-container");
 
 const Player = new H265Player(
-  "http://localhost:8000/api/cam/compat/playlist?device_id=983109294948712448&from=1677567900&s3_gen=true&no_get_size=true&to=1677569093",
+  "http://localhost:8000/api/cam/compat/playlist?device_id=983109294948712448&from=1677727560&s3_gen=true&no_get_size=true&to=1677728560",
   el
 );
 

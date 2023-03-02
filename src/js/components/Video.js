@@ -9,11 +9,11 @@ class VideoComponent extends BaseComponent {
     const cp = document.createElement("video");
     console.log(cp);
     cp.muted = true;
-    cp.defaultPlaybackRate = 3;
-    // cp.width = "100%";
-    // cp.height = "100%";
+    cp.defaultPlaybackRate = 16;
     cp.style.width = "100%";
     cp.style.height = "100%";
+    // cp.style.width = "100%";
+    // cp.style.height = "100%";
     cp.style.objectFit = "fill";
     this.parent.getElement().appendChild(cp);
     this.element = cp;
